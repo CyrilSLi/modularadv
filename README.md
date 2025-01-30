@@ -1,0 +1,3 @@
+# modularadv
+
+This is a modular adventure game. The main interface is a grid of rooms, each of which can contain different activities, give and require items, and increase the player's score. The combat system is turn-based, and all the player's and enemies' stats are specified using nested arrays. The game is designed to be easily modifiable, with each room having its own method for its activities.
