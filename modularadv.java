@@ -145,12 +145,24 @@ public class modularadv {
         return numInput(Integer.MIN_VALUE, prompt, Integer.MAX_VALUE);
     }
 
-    public static int choiceNumInput(String[] options, String prompt) {
+    public static int choiceNumInput(String[] options, String prompt, boolean allowError) {
         System.out.println("\nNumber\tOption");
         for (int i = 0; i < options.length; i++) {
             System.out.println((i + 1) + "\t" + options[i]);
         }
+        if (allowError) {
+            while (true) {
+                try {
+                    return numInput(1, prompt, options.length) - 1;
+                } catch (java.lang.NumberFormatException e) {
+                    System.out.println("Invalid input, please try again.");
+                }
+            }
+        }
         return numInput(1, prompt, options.length) - 1;
+    }
+    public static int choiceNumInput(String[] options, String prompt) {
+        return choiceNumInput(options, prompt, false);
     }
     public static String choiceInput(String[] options, String prompt) {
         try {
@@ -183,7 +195,7 @@ public class modularadv {
         for (int i = 0; i < player[0].length; i++) {
             characters[i] = getValue(player, i, "charName");
         }
-        int charIndex = choiceNumInput(characters, "Please choose a character");
+        int charIndex = choiceNumInput(characters, "Please choose a character", true);
         String[] charObj = player[0][charIndex];
         player = delItem(player, charIndex, "Character");
         player = addItem(player, charObj, "Character");
@@ -245,14 +257,14 @@ public class modularadv {
         for (int i = 0; i < player[1].length; i++) {
             weapons[i] = getValue(player, i, "weaponName");
         }
-        return choiceNumInput(weapons, "Please choose a weapon");
+        return choiceNumInput(weapons, "Please choose a weapon", true);
     }
     public static int choosePotion() {
         String[] potions = new String[player[3].length];
         for (int i = 0; i < player[3].length; i++) {
             potions[i] = getValue(player, i, "potionName");
         }
-        return choiceNumInput(potions, "Please choose a potion");
+        return choiceNumInput(potions, "Please choose a potion", true);
     }
 
     public static double calcDamage (String[][][] attacker, String[][][] opponent, int weapon, boolean charging, int opponentBlocking) {
@@ -322,10 +334,17 @@ public class modularadv {
     }
 
     public static Boolean voidRoom(String[][] args) {
-        if (args.length == 1) { // has story
-            for (String line : args[0]) {
-                System.out.println(line);
-            }
+        System.out.println("This is a void room. It contains no activities but may give points or items.");
+        return true;
+    }
+
+    public static Boolean storyRoom(String[][] args) {
+        long delay = Long.parseLong(args[1][0]);
+        for (int i = 1; i < args[1].length; i++) {          
+            System.out.println(args[1][i]);
+            try {
+                TimeUnit.MILLISECONDS.sleep(delay);
+            } catch (InterruptedException e) {}
         }
         return true;
     }
@@ -369,22 +388,22 @@ public class modularadv {
         while (true) {
             System.out.print("Enter a direction or action: ");
             String dir = kb.nextLine().toLowerCase();
-            if ((dir.equals("s") || dir.equals("down")) && posY > 0) {
+            if ((dir.equals("a") || dir.equals("left")) && posY > 0) {
                 if (rooms[posX][posY - 1] != null) {
                     posY--;
                     break;
                 }
-            } else if ((dir.equals("a") || dir.equals("left")) && posX > 0) {
+            } else if ((dir.equals("w") || dir.equals("up")) && posX > 0) {
                 if (rooms[posX - 1][posY] != null) {
                     posX--;
                     break;
                 }
-            } else if (dir.equals("w") || dir.equals("up")) {
+            } else if (dir.equals("d") || dir.equals("right")) {
                 if (rooms[posX].length > posY + 1 && rooms[posX][posY + 1] != null) {
                     posY++;
                     break;
                 }
-            } else if (dir.equals("d") || dir.equals("right")) {
+            } else if (dir.equals("s") || dir.equals("down")) {
                 if (rooms.length > posX + 1 && rooms[posX + 1][posY] != null) {
                     posX++;
                     break;
@@ -398,6 +417,25 @@ public class modularadv {
             } else if (dir.equals ("i") || dir.equals("in")) {
                 visitRoom(rooms[posX][posY]);
                 continue;
+            } else if ((dir.equals("m") || dir.equals("map")) && easyMode) {
+                System.out.println("\nNote that some void or story rooms provide crucial points, items, or information.");
+                System.out.println("Map: ('*': room not 'void' or 'story', 'X': wall, '@': current position, ' ': 'void' or 'story' room)\n");
+                for (int i = 0; i < rooms.length; i++) {
+                    for (int j = 0; j < rooms[i].length; j++) {
+                        if (rooms[i][j] == null) {
+                            System.out.print("X ");
+                        } else if (i == posX && j == posY) {
+                            System.out.print("@ ");
+                        } else if (rooms[i][j][0][0].equals("void") || rooms[i][j][0][0].equals("story")) {
+                            System.out.print("  ");
+                        } else {
+                            System.out.print("* ");
+                        }
+                    }
+                    System.out.println();
+                }
+                System.out.println();
+                continue;
             } else if (dir.equals("h") || dir.equals("help")) {
                 System.out.println();
                 System.out.println("h / help: Show help");
@@ -408,6 +446,9 @@ public class modularadv {
                 System.out.println("t / stats: Show stats");
                 System.out.println("c / char: Change character");
                 System.out.println("i / in: Enter room");
+                if (easyMode) {
+                    System.out.println("m / map: Show map");
+                }
                 System.out.println();
 
                 continue;
@@ -624,6 +665,8 @@ public class modularadv {
         Boolean success = false;
         if (roomType.equals("void")) {
             success = voidRoom(room);
+        } else if (roomType.equals("story")) {
+            success = storyRoom(room);
         } else if (roomType.equals("completePattern")) {
             success = completePattern(room);
         } else if (roomType.equals("lottery")) {
@@ -640,9 +683,11 @@ public class modularadv {
             System.out.println("You have successfully completed the room!");
             System.out.println("You gain " + room[0][1] + " score points.");
             score += Integer.parseInt(room[0][1]);
-            System.out.println("You find a " + room[0][2] + " in the room.");
             if (!room[0][2].equals("")) {
+                System.out.println("You find a " + room[0][2] + " in the room.");
                 addInvItem(room[0][2]);
+            } else {
+                System.out.println("You find no items in the room.");
             }
         } else {
             System.out.println("You have failed the room.");
@@ -680,10 +725,28 @@ public class modularadv {
             {"1, 1, 2, 3, 5", "8"},
         };
         String[][] startRoom = new String[][] {
-            {"void", "0", "dummyItem"}
+            {"story", "0", ""},
+            {
+                "500",
+                "Congratulations, you found the start room!",
+                "This is a story room, which gives you hints and information.",
+                "Although this room gives no score or items, other rooms may require items and/or give items."
+            }
+        };
+        String[][] voidRoom = new String[][] {
+            {"void", "0", ""}
         };
         String[][] pointRoom = new String[][] {
-            {"void", "10", "dummyItem"}
+            {"void", "10", "", "dummyItem"}
+        };
+        String[][] pointHint = new String[][] {
+            {"story", "0", ""},
+            {
+                "500",
+                "One of the rooms nearby gives score points.",
+                "They will be required to progress through the game.",
+                "The room requires an item which can be found in another room."
+            }
         };
         String[][] key1 = new String[][] {
             {"lottery", "10", "key1", "logicOrb"},
@@ -697,14 +760,31 @@ public class modularadv {
             {"exitDoor", "0", "", "goblinSkin"},
             {"300"}
         };
+        String[][] lotteHint = new String[][] {
+            {"story", "0", ""},
+            {
+                "500",
+                "There is a lottery room nearby.",
+                "It costs 10 points to play and has a 10% win chance.",
+                "Be sure to stock up on score so you don't run out and lose!"
+            }
+        };
+        String[][] dummyRoom = new String[][] {
+            {"story", "0", "dummyItem"},
+            {
+                "500",
+                "This room contains a dummyItem.",
+                "You can use it to enter other rooms."
+            }
+        };
         String[][][][] rooms = new String[][][][] {
-            {startRoom, null, startRoom, startRoom, key1},
-            {exit1, startRoom, startRoom, startRoom, null},
-            {startRoom, null, goblinFight1, null, startRoom},
-            {null, pointRoom, startRoom, pattern1, startRoom},
+            {startRoom, null,      voidRoom,     lotteHint, key1},
+            {exit1,     voidRoom,  voidRoom,     voidRoom,  null},
+            {pointHint, null,      goblinFight1, null,      dummyRoom},
+            {null,      pointRoom, pointHint,    pattern1,  voidRoom},
 
         };
-        long delay = 300;
+        long delay = 200;
         try {
             System.out.println("Welcome to Modular Adventure!");
             TimeUnit.MILLISECONDS.sleep(delay);
@@ -721,8 +801,12 @@ public class modularadv {
             System.out.println("Rooms will not tell you how much score they give and require, check for story rooms for hints.");
             TimeUnit.MILLISECONDS.sleep(delay);
             System.out.println("Enable easy mode to be able to view a map of the grid.");
+            TimeUnit.MILLISECONDS.sleep(delay);
+            easyMode = choiceNumInput(new String[] {"No", "Yes"}, "Do you want to enable easy mode?", true) == 1;
+            System.out.println("Easy mode " + (easyMode ? "enabled." : "disabled."));
         } catch (InterruptedException e) {}
         while (true) {
+            System.out.println("You are currently at a " + rooms[posX][posY][0][0] + " room.");
             move(rooms);
         }
     }
