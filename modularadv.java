@@ -80,19 +80,27 @@ public class modularadv {
     static int posX = 0, posY = 0, score = 0;
     static boolean easyMode = false;
 
-    static String[][][] goblinEnemy = new String[][][] {
-        {{"Goblin", "1", "100", "100"}},
-        {
-            {"Dagger", "10", "10", "10", "0.5", "1.5", "0.9", "0.2", "3"},
-            {"Sword", "20", "10", "10", "0.1", "1.5", "0.9", "0.2", "3"}
-        },
-        {{"Leather Armor", "0.5", "10", "10"}},
-        {},
-        {},
-        {{"-2", "-2", "-3", "0"}}
-    };
     static String[][][][] enemys = {
-        goblinEnemy
+        {
+            {{"Goblin", "1", "100", "100"}},
+            {
+                {"Dagger", "10", "10", "10", "0.5", "1.5", "0.9", "0.2", "3"},
+                {"Sword", "20", "10", "10", "0.1", "1.5", "0.9", "0.2", "3"}
+            },
+            {{"Leather Armor", "0.5", "10", "10"}},
+            {},
+            {},
+            {{"-2", "-2", "-3", "2"}}
+        }, {
+            {{"Demon", "1", "100", "100"}},
+            {
+                {"Mace", "50", "50", "50", "0.5", "1.5", "1", "0.2", "3"}
+            },
+            {{"Steel Armor", "0.2", "20", "20"}},
+            {},
+            {},
+            {{"-3", "0", "-1"}}
+        }
     };
 
     public static Boolean checkInvItem(String item) {
@@ -117,7 +125,7 @@ public class modularadv {
                 return;
             }
         }
-        player = addItem(player, new String[] {item}, "Inventory");
+        player = addItem(player, new String[]{item}, "Inventory");
     }
 
     public static int numInput(int minValue, String prompt, int maxValue) {
@@ -241,14 +249,15 @@ public class modularadv {
         for (int i = 0; i < array.length; i++) {
             if (i == catIndex) {
                 newArray[i] = new String[array[i].length + 1][];
+                newArray[i][0] = item;
                 for (int j = 0; j < array[i].length; j++) {
-                    newArray[i][j] = array[i][j];
+                    newArray[i][j + 1] = array[i][j];
                 }
-                newArray[i][array[i].length] = item;
             } else {
                 newArray[i] = array[i];
             }
         }
+
         return newArray;
     }
 
@@ -293,20 +302,15 @@ public class modularadv {
         return damage;
     }
 
-    /**
-     * Travel through a maze
-     * @param maze
-     * @param args [int addScore]
-     */
-    public static void travelMaze(String[][] maze, String[] args) {
-        int mazeX = 0, mazeY = 0;
-        while (mazeX != maze.length - 1 || mazeY != maze[0].length - 1) {
-            
+    public static Boolean characterRoom(String[][] args) {
+        for (int i = 2; i < args.length; i++) {
+            player = addItem(player, args[i], args[1][i - 2]);
+            System.out.println("You have a new " + args[1][i - 2] + " item named " + args[i][0] + "!");
         }
+        return true;
     }
 
     public static Boolean completePattern(String[][] args) {
-        int addScore = Integer.parseInt(args[0][1]);
         Boolean success = true;
         for (int i = 1; i < args.length; i++) {
             System.out.print ("Pattern " + i + ": " + args[i][0]);
@@ -349,12 +353,6 @@ public class modularadv {
         return true;
     }
 
-    /**
-     * 
-     * @param cost
-     * @param addScore
-     * @param winChance
-     */
     public static Boolean lottery(String[][] args) {
         int cost = Integer.parseInt(args[1][0]);
         double winChance = Double.parseDouble(args[1][1]);
@@ -367,9 +365,17 @@ public class modularadv {
             success = true;
         } else {
             System.out.println("Sorry, you lost the lottery.");
-            
         }
         return success;
+    }
+
+    public static Boolean teleportRoom(String[][] args) {
+        int x = Integer.parseInt(args[1][0]);
+        int y = Integer.parseInt(args[1][1]);
+        System.out.println("You have been teleported to room (" + x + ", " + y + ").");
+        posX = x;
+        posY = y;
+        return true;
     }
 
     public static Boolean exitDoor(String[][] args) {
@@ -377,9 +383,12 @@ public class modularadv {
         if (score >= required) {
             System.out.println("You have enough points to escape.");
             System.out.println("Congratulations! You have won the game!");
+            System.out.println("Your final score: " + score);
+            System.out.println("Thank you for playing!");
             System.exit(0);
         }
         System.out.println("You do not have enough points to escape.");
+        System.out.println("Required score: " + required + ", your score: " + score);
         System.out.println("Please try again.");
         return false;
     }
@@ -415,8 +424,11 @@ public class modularadv {
                 chooseChar();
                 break;
             } else if (dir.equals ("i") || dir.equals("in")) {
-                visitRoom(rooms[posX][posY]);
-                continue;
+                if (visitRoom(rooms[posX][posY])) {
+                    break;
+                } else {
+                    continue;
+                }
             } else if ((dir.equals("m") || dir.equals("map")) && easyMode) {
                 System.out.println("\nNote that some void or story rooms provide crucial points, items, or information.");
                 System.out.println("Map: ('*': room not 'void' or 'story', 'X': wall, '@': current position, ' ': 'void' or 'story' room)\n");
@@ -653,20 +665,23 @@ public class modularadv {
         System.out.println("\n");
     }
 
-    public static void visitRoom(String[][]room) {
+    public static boolean visitRoom(String[][]room) {
         String roomType = room[0][0];
         for (int i = 3; i < room[0].length; i++) {
             if (!checkInvItem(room[0][i])) {
                 System.out.println("You do not have the required item " + room[0][i] + " to enter this room.");
-                return;
+                return false;
             }
         }
         System.out.println("You are entering a " + roomType + " room.");
-        Boolean success = false;
+        Boolean success = false, returnVal = false;
         if (roomType.equals("void")) {
             success = voidRoom(room);
         } else if (roomType.equals("story")) {
             success = storyRoom(room);
+        } else if (roomType.equals("teleport")) {
+            success = teleportRoom(room);
+            returnVal = true; // show room info when teleported
         } else if (roomType.equals("completePattern")) {
             success = completePattern(room);
         } else if (roomType.equals("lottery")) {
@@ -675,6 +690,8 @@ public class modularadv {
             success = combat(enemys[Integer.parseInt(room[1][0])]);
         } else if (roomType.equals("exitDoor")) {
             success = exitDoor(room);
+        } else if (roomType.equals("character")) {
+            success = characterRoom(room);
         } else {
             System.out.println("Invalid room type: " + roomType);
             System.exit(1);
@@ -696,6 +713,7 @@ public class modularadv {
             System.out.println("You have negetive score! Game over.");
             System.exit(0);
         }
+        return returnVal;
     }
 
     public static void main(String[] args) {
@@ -756,9 +774,13 @@ public class modularadv {
             {"combat", "100", "goblinSkin", "key1"},
             {"0"}
         };
-        String[][] exit1 = new String[][] {
-            {"exitDoor", "0", "", "goblinSkin"},
-            {"300"}
+        String[][] teleport1 = new String[][] {
+            {"teleport", "0", "", "goblinSkin"},
+            {"5", "0"}
+        };
+        String[][] teleport2 = new String[][] {
+            {"teleport", "0", "", "returnKey"},
+            {"1", "0"}
         };
         String[][] lotteHint = new String[][] {
             {"story", "0", ""},
@@ -766,7 +788,8 @@ public class modularadv {
                 "500",
                 "There is a lottery room nearby.",
                 "It costs 10 points to play and has a 10% win chance.",
-                "Be sure to stock up on score so you don't run out and lose!"
+                "You will lose the entire game if you have negative points,",
+                "so be sure to check your score before playing!"
             }
         };
         String[][] dummyRoom = new String[][] {
@@ -777,11 +800,63 @@ public class modularadv {
                 "You can use it to enter other rooms."
             }
         };
+        String[][] demonFight1 = new String[][] {
+            {"combat", "100", "demonLeg"},
+            {"1"}
+        };
+        String[][] demonHint = new String[][] {
+            {"story", "0", "wardrobeKey1"},
+            {
+                "500",
+                "You probably have tried to fight the Demon in the room nearby.",
+                "It is too strong for you right now, but you can upgrade your gear.",
+                "I will help you by giving you the key to a character room.",
+                "The room contains a powerful weapon and armor for you to use.",
+                "The Demon also has a predictable attack pattern so you can prepare."
+            }
+        };
+        String[][] charRoom1 = new String[][] {
+            {"character", "0", "", "wardrobeKey1"},
+            {"Weapon", "Armor"},
+            {"Diamond Dagger", "40", "40", "40", "0.2", "1.5", "0.9", "0.2", "3"},
+            {"Chainmail Armor", "0.25", "20", "20"}
+        };
+        String[][] exitRoom = new String[][] {
+            {"exitDoor", "0", "", "exitKey"},
+            {"500"}
+        };
+        String[][] key2 = new String[][] {
+            {"lottery", "0", "key2", "demonLeg"},
+            {"20", "0.1"}
+        };
+        String[][] exitKey = new String[][] {
+            {"completePattern", "0", "exitKey", "key2"},
+            {"5", "7", "1", "4", "2", "8"},
+            {"17", "52", "26", "13", "40", "20"},
+            {"0", "17", "33", "50", "67", "83"}
+        };
+        String[][] key2Hint = new String[][] {
+            {"story", "0", ""},
+            {
+                "500",
+                "A room nearby contains the key to the exit.",
+                "However, it requires another key to enter.",
+                "Hint - you may have to use a key to backtrack."
+            }
+        };
+        String[][] returnKey = new String[][] {
+            {"void", "0", "returnKey"}
+        };
         String[][][][] rooms = new String[][][][] {
-            {startRoom, null,      voidRoom,     lotteHint, key1},
-            {exit1,     voidRoom,  voidRoom,     voidRoom,  null},
-            {pointHint, null,      goblinFight1, null,      dummyRoom},
-            {null,      pointRoom, pointHint,    pattern1,  voidRoom},
+            {startRoom,   null,      voidRoom,     lotteHint, key1},
+            {teleport1,   voidRoom,  voidRoom,     voidRoom,  null},
+            {pointHint,   null,      goblinFight1, null,      dummyRoom},
+            {null,        pointRoom, pointHint,    pattern1,  voidRoom},
+            {null,        key2,      null,         null,      null},
+            {teleport2,   null,      voidRoom,     charRoom1, null},
+            {demonFight1, demonHint, voidRoom,     null,      exitRoom},
+            {demonHint,   null,      null,         key2Hint,  voidRoom},
+            {voidRoom,    voidRoom,  exitKey,      returnKey, null}
 
         };
         long delay = 200;
@@ -806,7 +881,7 @@ public class modularadv {
             System.out.println("Easy mode " + (easyMode ? "enabled." : "disabled."));
         } catch (InterruptedException e) {}
         while (true) {
-            System.out.println("You are currently at a " + rooms[posX][posY][0][0] + " room.");
+            System.out.println("You are currently at (" + posX + ", " + posY + "). This is a " + rooms[posX][posY][0][0] + " room.");
             move(rooms);
         }
     }
